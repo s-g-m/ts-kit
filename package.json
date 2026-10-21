@@ -1,0 +1,38 @@
+{
+  "name": "@s-g-m/ts-kit",
+  "version": "0.0.1",
+  "description": "TypeScript foundational and cross-cutting libraries for Web and Mobile",
+  "type": "module",
+  "main": "./base/index.ts",
+  "types": "./base/index.ts",
+  "exports": {
+    "./base": "./base/index.ts",
+    "./base/errs": "./base/errs/errs.ts",
+    "./base/env": "./base/env/env.ts",
+    "./base/httpcli": "./base/httpcli/httpcli.ts",
+    "./base/storage": "./base/storage/storage.ts",
+    "./base/telemetry": "./base/telemetry/telemetry.ts",
+    "./auth": "./auth/auth.ts",
+    "./hooks": "./hooks/hooks.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.0.0",
+    "happy-dom": "^21.0.3",
+    "react": "^19.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.4"
+  }
+}
