@@ -1,8 +1,8 @@
 // Package hooks provides lightweight, reusable React hooks agnostic of business domains.
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { defaultStorage, TypedStorage } from "../base/storage/storage.ts";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppError } from "../base/errs/errs.ts";
+import { defaultStorage, type TypedStorage } from "../base/storage/storage.ts";
 
 /**
  * Delays updating the returned value until delayMs has passed without changes.
@@ -62,7 +62,7 @@ export interface UseAsyncOptions<T> {
  */
 export function useAsync<T>(
   options: UseAsyncOptions<T> | (() => Promise<T>),
-  immediate = true
+  immediate = true,
 ): AsyncState<T> & { execute: () => Promise<T | null> } {
   const asyncFn = typeof options === "function" ? options : options.fn;
   const shouldRunImmediately =
@@ -107,7 +107,7 @@ export interface UseStorageOptions<T> {
  * Synchronizes a React state value with persistent or in-memory TypedStorage.
  */
 export function useStorage<T>(
-  options: UseStorageOptions<T>
+  options: UseStorageOptions<T>,
 ): [T, (value: T | ((prev: T) => T)) => void] {
   const { key, initialValue, storage = defaultStorage } = options;
 
@@ -124,7 +124,7 @@ export function useStorage<T>(
         return next;
       });
     },
-    [key, storage]
+    [key, storage],
   );
 
   return [storedValue, setValue];

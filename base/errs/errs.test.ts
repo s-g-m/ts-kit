@@ -1,13 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  newError,
-  ErrorTypes,
-  ErrorLevels,
   asAppError,
-  isAppError,
-  withDetails,
-  type ErrorType,
   type ErrorLevel,
+  ErrorLevels,
+  type ErrorType,
+  ErrorTypes,
+  isAppError,
+  newError,
+  resolveMessage,
+  withDetails,
 } from "./errs.ts";
 
 const TEST_CODE = "INVALID_INPUT";
@@ -109,7 +110,7 @@ describe("errs", () => {
     expect(got).toBe(failure);
     expect(got?.unwrap()).toBe(cause);
     expect(got?.messageFormatted()).toBe(
-      `[VALIDATION:${TEST_CODE}] ${TEST_MESSAGE}: ${TEST_CAUSE_MESSAGE}`
+      `[VALIDATION:${TEST_CODE}] ${TEST_MESSAGE}: ${TEST_CAUSE_MESSAGE}`,
     );
   });
 
@@ -181,5 +182,36 @@ describe("errs", () => {
       cause: "invalid value",
       details: { field: "subject" },
     });
+  });
+
+  const catalog = {
+    byCode: { [TEST_CODE]: "code message" },
+    byType: { [ErrorTypes.Timeout]: "type message" },
+    fallback: "fallback message",
+  };
+  const messageTests = [
+    {
+      name: "code wins over type",
+      err: newError(TEST_CODE, TEST_MESSAGE).timeout(),
+      expected: "code message",
+    },
+    {
+      name: "type when the code is unknown",
+      err: newError("OTHER", TEST_MESSAGE).timeout(),
+      expected: "type message",
+    },
+    {
+      name: "fallback for unknown types",
+      err: newError("OTHER", TEST_MESSAGE).forbidden(),
+      expected: "fallback message",
+    },
+    {
+      name: "fallback for ordinary errors",
+      err: new Error(TEST_MESSAGE),
+      expected: "fallback message",
+    },
+  ];
+  it.each(messageTests)("resolves user messages: $name", (test) => {
+    expect(resolveMessage(test.err, catalog)).toBe(test.expected);
   });
 });

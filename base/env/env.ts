@@ -133,3 +133,11 @@ export function required(key: string, source?: EnvSource): string {
   }
   return value;
 }
+
+const ANDROID_EMULATOR_HOST = "10.0.2.2";
+const LOOPBACK_HOSTS = /\/\/(localhost|127\.0\.0\.1)(?=[:/]|$)/;
+
+/** The Android emulator reaches the host machine through 10.0.2.2 instead of localhost. */
+export function resolveHostUrl(value: string, os: string): string {
+  return os === "android" ? value.replace(LOOPBACK_HOSTS, `//${ANDROID_EMULATOR_HOST}`) : value;
+}

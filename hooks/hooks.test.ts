@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi } from "vitest";
-import { renderHook, act } from "@testing-library/react";
-import { useDebounce, useInterval, useAsync, useStorage } from "./hooks.ts";
+
+import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { MemoryStorageAdapter, TypedStorage } from "../base/storage/storage.ts";
+import { useAsync, useDebounce, useInterval, useStorage } from "./hooks.ts";
 
 describe("hooks", () => {
   it("debounces rapid value changes", () => {
@@ -37,7 +38,7 @@ describe("hooks", () => {
       ({ delay }: { delay: number | null }) => useInterval(callback, delay),
       {
         initialProps: { delay: 100 as number | null },
-      }
+      },
     );
 
     act(() => {
@@ -85,7 +86,7 @@ describe("hooks", () => {
     const storage = new TypedStorage({ adapter: memoryAdapter });
 
     const { result } = renderHook(() =>
-      useStorage({ key: "theme", initialValue: "dark", storage })
+      useStorage({ key: "theme", initialValue: "dark", storage }),
     );
 
     expect(result.current[0]).toBe("dark");

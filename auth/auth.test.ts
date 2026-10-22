@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
-import { AuthManager, decodeJwt, CodeAuthRefreshFailed } from "./auth.ts";
-import { MemoryStorageAdapter } from "../base/storage/storage.ts";
-import { HttpClient } from "../base/httpcli/httpcli.ts";
+import { describe, expect, it, vi } from "vitest";
 import { asAppError, ErrorTypes } from "../base/errs/errs.ts";
+import { HttpClient } from "../base/httpcli/httpcli.ts";
+import { MemoryStorageAdapter } from "../base/storage/storage.ts";
+import { AuthManager, CodeAuthRefreshFailed, decodeJwt } from "./auth.ts";
 
 describe("auth", () => {
   it("decodes valid JWT payloads and rejects malformed tokens", () => {
@@ -123,7 +123,7 @@ describe("auth", () => {
         headers: expect.objectContaining({
           Authorization: "Bearer valid-secret-token",
         }),
-      })
+      }),
     );
   });
 });

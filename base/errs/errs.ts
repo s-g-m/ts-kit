@@ -224,3 +224,19 @@ export function withDetails<T>(err: T, details: Record<string, unknown> | null):
   }
   return err;
 }
+
+/** User-facing texts of an application; Kit resolves them, the application owns their wording and language. */
+export interface MessageCatalog {
+  byCode?: Readonly<Record<string, string>>;
+  byType?: Readonly<Partial<Record<ErrorType, string>>>;
+  fallback: string;
+}
+
+/** Resolves the text for an error: first by AppError code, then by type, then the fallback. */
+export function resolveMessage(err: unknown, catalog: MessageCatalog): string {
+  const appError = asAppError(err);
+  if (!appError) {
+    return catalog.fallback;
+  }
+  return catalog.byCode?.[appError.code] ?? catalog.byType?.[appError.type] ?? catalog.fallback;
+}

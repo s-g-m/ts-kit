@@ -1,8 +1,8 @@
 // Package auth provides JWT token lifecycle management, deduplicated refresh and HTTP client integration.
 
 import { newError } from "../base/errs/errs.ts";
-import { TypedStorage, type StorageAdapter } from "../base/storage/storage.ts";
-import type { HttpClient } from "../base/httpcli/httpcli.ts";
+import { bearerInterceptor, type HttpClient } from "../base/httpcli/httpcli.ts";
+import { type StorageAdapter, TypedStorage } from "../base/storage/storage.ts";
 
 export const CodeAuthInvalidToken = "AUTH_INVALID_TOKEN";
 export const CodeAuthRefreshFailed = "AUTH_REFRESH_FAILED";
@@ -157,22 +157,7 @@ export class AuthManager {
    * Attaches an auth request interceptor to HttpClient to automatically inject Bearer headers.
    */
   public attachToHttpClient(client: HttpClient): void {
-    client.useRequestInterceptor(async (url, init) => {
-      const token = await this.getValidAccessToken();
-      if (!token) {
-        return { url, init };
-      }
-
-      const headers = {
-        ...((init.headers as Record<string, string>) ?? {}),
-        Authorization: `Bearer ${token}`,
-      };
-
-      return {
-        url,
-        init: { ...init, headers },
-      };
-    });
+    client.useRequestInterceptor(bearerInterceptor(() => this.getValidAccessToken()));
   }
 
   private notify(tokens: AuthTokens | null): void {
@@ -190,7 +175,7 @@ export class AuthManager {
  * Decodes standard JWT payload without external dependencies.
  */
 export function decodeJwt<T = { exp?: number; sub?: string; [key: string]: unknown }>(
-  token: string
+  token: string,
 ): T | null {
   try {
     const parts = token.split(".");
@@ -223,4 +208,26 @@ function decodeBase64(base64: string): string | null {
     return buf.from(base64, "base64").toString("utf-8");
   }
   return null;
+}
+
+export const CodeAuthSignInCancelled = "AUTH_SIGN_IN_CANCELLED";
+export const CodeAuthSignInUnavailable = "AUTH_SIGN_IN_UNAVAILABLE";
+export const CodeAuthSignInFailed = "AUTH_SIGN_IN_FAILED";
+
+export type SignInProvider = "google" | "apple";
+
+export interface AuthUser {
+  uid: string;
+  displayName: string | null;
+}
+
+/**
+ * Identity provider session whose SDK persists and refreshes the tokens (for example Firebase Auth).
+ * signIn rejects with an AppError coded CodeAuthSignInCancelled, CodeAuthSignInUnavailable or CodeAuthSignInFailed.
+ */
+export interface AuthGateway {
+  onUserChanged(listener: (user: AuthUser | null) => void): () => void;
+  signIn(provider: SignInProvider): Promise<void>;
+  signOut(): Promise<void>;
+  getIdToken(): Promise<string | null>;
 }

@@ -1,18 +1,19 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { asAppError, ErrorLevels, ErrorTypes } from "../errs/errs.ts";
 import {
-  string,
-  int,
   bool,
-  url,
-  required,
-  setEnvSource,
-  CodeEnvInvalidInteger,
   CodeEnvInvalidBoolean,
+  CodeEnvInvalidInteger,
   CodeEnvInvalidUrl,
   CodeEnvMissingRequired,
   type EnvSource,
+  int,
+  required,
+  resolveHostUrl,
+  setEnvSource,
+  string,
+  url,
 } from "./env.ts";
-import { asAppError, ErrorTypes, ErrorLevels } from "../errs/errs.ts";
 
 const TEST_VARIABLE = "TEST_ENV_VALUE";
 const CASE_VALID = "valid value";
@@ -134,3 +135,35 @@ function runReadTests<T>(tests: ReadCase<T>[], reader: (source: EnvSource) => T)
     expect(failure?.message, tt.name).toContain(TEST_VARIABLE);
   }
 }
+
+describe("resolveHostUrl", () => {
+  const hostTests = [
+    {
+      name: "localhost on android",
+      value: "http://localhost:8080",
+      os: "android",
+      expected: "http://10.0.2.2:8080",
+    },
+    {
+      name: "loopback ip on android",
+      value: "http://127.0.0.1:9099",
+      os: "android",
+      expected: "http://10.0.2.2:9099",
+    },
+    {
+      name: "localhost on ios",
+      value: "http://localhost:8080",
+      os: "ios",
+      expected: "http://localhost:8080",
+    },
+    {
+      name: "remote host on android",
+      value: "https://api.example.com",
+      os: "android",
+      expected: "https://api.example.com",
+    },
+  ];
+  it.each(hostTests)("$name", (test) => {
+    expect(resolveHostUrl(test.value, test.os)).toBe(test.expected);
+  });
+});

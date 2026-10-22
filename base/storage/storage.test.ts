@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { MemoryStorageAdapter, LocalStorageAdapter, TypedStorage } from "./storage.ts";
+import { beforeEach, describe, expect, it } from "vitest";
+import { LocalStorageAdapter, MemoryStorageAdapter, TypedStorage } from "./storage.ts";
 
 const TEST_PREFIX = "app";
 
