@@ -1,5 +1,7 @@
 // Package httpcli creates reusable HTTP clients with timeout cancellation, interceptors and errs integration.
 
+import type { Context } from "@opentelemetry/api";
+import { observeHttp } from "../telemetry/otel.ts";
 import { newError, AppError, ErrorTypes, type ErrorType } from "../errs/errs.ts";
 
 export const CodeHttpClientTimeout = "HTTP_CLIENT_TIMEOUT";
@@ -44,6 +46,7 @@ export interface HttpClientOptions {
 }
 
 export interface RequestOptions extends Omit<RequestInit, "body"> {
+  context?: Context;
   query?: Record<string, string | number | boolean | undefined | null>;
   body?: unknown;
   timeoutMs?: number;
@@ -94,24 +97,46 @@ export class HttpClient {
   }
 
   public async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const { query, body, timeoutMs = this.timeoutMs, headers, ...restInit } = options;
-    const initialUrl = buildUrl(this.baseUrl, endpoint, query);
-    const mergedHeaders = mergeHeaders(this.defaultHeaders, headers);
-    const processedBody = serializeRequestBody(body, mergedHeaders);
-
-    const { url: targetUrl, init: targetInit } = await this.applyRequestInterceptors(initialUrl, {
-      ...restInit,
-      headers: mergedHeaders,
-      body: processedBody,
-    });
-
-    const response = await this.executeFetch(endpoint, targetUrl, targetInit, timeoutMs);
-    if (!response.ok) {
-      const httpError = await buildHttpError(response);
-      return this.handleError(httpError);
-    }
-
-    return this.parseSuccessResponse<T>(response);
+    const {
+      context: parent,
+      query,
+      body,
+      timeoutMs = this.timeoutMs,
+      headers,
+      ...restInit
+    } = options;
+    return observeHttp(
+      restInit.method ?? "GET",
+      async (observation) => {
+        const initialUrl = buildUrl(this.baseUrl, endpoint, query);
+        const mergedHeaders = mergeHeaders(this.defaultHeaders, headers);
+        const processedBody = serializeRequestBody(body, mergedHeaders);
+        const { url: targetUrl, init: targetInit } = await this.applyRequestInterceptors(
+          initialUrl,
+          {
+            ...restInit,
+            headers: mergedHeaders,
+            body: processedBody,
+          }
+        );
+        const response = await this.executeFetch(
+          endpoint,
+          targetUrl,
+          {
+            ...targetInit,
+            headers: observation.headers(targetUrl, targetInit.headers),
+          },
+          timeoutMs
+        );
+        observation.setStatus(response.status);
+        if (!response.ok) {
+          const httpError = await buildHttpError(response);
+          return this.handleError(httpError);
+        }
+        return await this.parseSuccessResponse<T>(response);
+      },
+      parent
+    );
   }
 
   public get<T>(endpoint: string, options?: RequestOptions): Promise<T> {
@@ -198,9 +223,9 @@ export class HttpClient {
     return result;
   }
 
-  private handleError(err: AppError): never {
+  private async handleError(err: AppError): Promise<never> {
     for (const interceptor of this.errorInterceptors) {
-      interceptor(err);
+      await interceptor(err);
     }
     throw err;
   }
@@ -284,8 +309,7 @@ function serializeRequestBody(
 
 function classifyTransportError(endpoint: string, aborted: boolean, err: unknown): AppError {
   const isTimeout =
-    aborted ||
-    (err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError"));
+    aborted || (err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError"));
 
   const appError = isTimeout
     ? newError(CodeHttpClientTimeout, `Request to ${endpoint} timed out`).timeout()

@@ -228,3 +228,6 @@ export class Telemetry {
 }
 
 export const defaultTelemetry = new Telemetry();
+
+export { init, success, failure, fromError, measure, trace, tracer, recordError } from "./otel.ts";
+export type { InitOptions, TelemetryHandle } from "./otel.ts";
