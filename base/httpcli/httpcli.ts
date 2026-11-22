@@ -21,7 +21,11 @@ const HTTP_STATUS_FORBIDDEN = 403;
 const HTTP_STATUS_NOT_FOUND = 404;
 const HTTP_STATUS_REQUEST_TIMEOUT = 408;
 const HTTP_STATUS_CONFLICT = 409;
+const HTTP_STATUS_GONE = 410;
+const HTTP_STATUS_PRECONDITION_FAILED = 412;
 const HTTP_STATUS_UNPROCESSABLE = 422;
+const HTTP_STATUS_PRECONDITION_REQUIRED = 428;
+const HTTP_STATUS_TOO_MANY_REQUESTS = 429;
 const HTTP_STATUS_SERVICE_UNAVAILABLE = 503;
 const HTTP_STATUS_GATEWAY_TIMEOUT = 504;
 
@@ -338,9 +342,9 @@ function classifyTransportError(endpoint: string, aborted: boolean, err: unknown
 }
 
 async function buildHttpError(response: Response): Promise<AppError> {
-  const { message, details } = await extractErrorPayload(response);
+  const { message, details, code } = await extractErrorPayload(response);
   const errType = mapHttpStatusToErrorType(response.status);
-  const httpError = newError(CodeHttpClientHttpError, message).withType(errType);
+  const httpError = newError(code ?? CodeHttpClientHttpError, message).withType(errType);
 
   if (details && typeof details === "object") {
     httpError.withDetails(details as Record<string, unknown>);
@@ -351,11 +355,15 @@ async function buildHttpError(response: Response): Promise<AppError> {
 
 async function extractErrorPayload(
   response: Response,
-): Promise<{ message: string; details?: unknown }> {
+): Promise<{ message: string; details?: unknown; code?: string }> {
   const fallbackMessage = `HTTP ${response.status}: ${response.statusText}`;
 
   try {
     const parsed = (await response.json()) as Record<string, unknown> | null;
+    const envelope = goKitEnvelope(parsed);
+    if (envelope) {
+      return envelope;
+    }
     if (parsed && typeof parsed.message === "string") {
       return { message: parsed.message, details: parsed };
     }
@@ -373,13 +381,35 @@ async function extractErrorPayload(
   }
 }
 
+/**
+ * Reads the go-kit error envelope `{ error: { code, message, details } }`: the server code becomes the
+ * AppError code so callers can resolve messages by it, and only the inner details are kept.
+ */
+function goKitEnvelope(
+  parsed: Record<string, unknown> | null,
+): { message: string; details?: unknown; code: string } | null {
+  const inner = parsed?.error;
+  if (!inner || typeof inner !== "object") {
+    return null;
+  }
+  const { code, message, details } = inner as Record<string, unknown>;
+  if (typeof code !== "string" || typeof message !== "string") {
+    return null;
+  }
+  return { code, message, details: details ?? undefined };
+}
+
 const HTTP_STATUS_ERROR_TYPES: Record<number, ErrorType> = {
   [HTTP_STATUS_BAD_REQUEST]: ErrorTypes.BadRequest,
   [HTTP_STATUS_UNAUTHORIZED]: ErrorTypes.Unauthorized,
   [HTTP_STATUS_FORBIDDEN]: ErrorTypes.Forbidden,
   [HTTP_STATUS_NOT_FOUND]: ErrorTypes.NotFound,
   [HTTP_STATUS_CONFLICT]: ErrorTypes.Conflict,
+  [HTTP_STATUS_GONE]: ErrorTypes.Gone,
+  [HTTP_STATUS_PRECONDITION_FAILED]: ErrorTypes.PreconditionFailed,
   [HTTP_STATUS_UNPROCESSABLE]: ErrorTypes.Validation,
+  [HTTP_STATUS_PRECONDITION_REQUIRED]: ErrorTypes.PreconditionRequired,
+  [HTTP_STATUS_TOO_MANY_REQUESTS]: ErrorTypes.TooManyRequests,
   [HTTP_STATUS_REQUEST_TIMEOUT]: ErrorTypes.Timeout,
   [HTTP_STATUS_GATEWAY_TIMEOUT]: ErrorTypes.Timeout,
   [HTTP_STATUS_SERVICE_UNAVAILABLE]: ErrorTypes.ServiceUnavailable,

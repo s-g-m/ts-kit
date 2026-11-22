@@ -4,7 +4,7 @@ Librerías para TypeScript (Web y Mobile).
 
 ## Organización
 
-`base` agrupa la base común en una única versión y sin dependencias de interfaz visual ni de dominio. Sus paquetes conservan responsabilidades independientes:
+`base` agrupa la base común en una única versión, sin dependencias de interfaz visual, de DOM ni de SDKs externos. Sus paquetes conservan responsabilidades independientes:
 
 | Paquete de `base` | Responsabilidad                                                                                                                                          |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -13,9 +13,8 @@ Librerías para TypeScript (Web y Mobile).
 | `httpcli`         | Cliente HTTP sobre `fetch` con timeout, interceptores (`bearerInterceptor`) y métricas/trazas automáticas.                                               |
 | `ids`             | Identificadores UUIDv7 (`uuidv7`).                                                                                                                       |
 | `telemetry`       | Funciones de operaciones sobre OpenTelemetry, exportación OTLP/consola y API previa de logs/eventos compatible.                                          |
-| `storage`         | Contrato de persistencia clave-valor (`StorageAdapter`) con adaptadores `LocalStorageAdapter` y `MemoryStorageAdapter`.                                  |
 
-Los módulos opcionales dependen únicamente de `base` (y `firebase/*` también de `auth`):
+Las capacidades opcionales se agrupan por dominio con su contrato común en la raíz y un adaptador por plataforma (`web`, `expo`/`native`), dependiendo únicamente de `base` (y `firebase/*` también de `auth`):
 
 | Módulo            | Responsabilidad                                                                                                                                           |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -23,12 +22,22 @@ Los módulos opcionales dependen únicamente de `base` (y `firebase/*` también 
 | `hooks`           | Primitivas reactivas agnósticas para React (`useDebounce`, `useInterval`, `useAsync`, `useStorage`).                                                      |
 | `firebase/web`    | `AuthGateway` sobre Firebase Auth para navegador (`createFirebaseWebAuth`).                                                                               |
 | `firebase/native` | `AuthGateway` sobre `@react-native-firebase/auth` (`createFirebaseNativeAuth`).                                                                           |
-| `expo/network`    | Conectividad del dispositivo con `expo-network` (`subscribeOnline`, `useOnline`).                                                                         |
-| `expo/sqlite`     | Contrato `SqliteDatabase` y apertura diferida de almacenes con `expo-sqlite` (`lazyStore`).                                                               |
+| `storage`         | Contrato clave-valor pequeño (`StorageAdapter`), `TypedStorage` y `MemoryStorageAdapter`.                                                                 |
+| `storage/web`     | `StorageAdapter` sobre `window.localStorage` con respaldo en memoria (`LocalStorageAdapter`).                                                             |
+| `storage/expo`    | `StorageAdapter` sobre `expo-sqlite/kv-store` (`sqliteStorageAdapter`).                                                                                   |
+| `image`           | Contrato `PreparedImage` (imagen reducida y miniatura) y `fitWithin` para reducir conservando la proporción.                                              |
+| `image/web`       | Reducción en el navegador de un archivo elegido a JPEG con miniatura sobre canvas (`prepareImage`).                                                       |
+| `image/expo`      | Selección de una foto con `expo-image-picker` y reducción a JPEG con miniatura usando `expo-image-manipulator` (`pickImage`).                             |
+| `network`         | Contrato `NetworkMonitor`, `MemoryNetworkMonitor` y hook `useOnline(monitor)`.                                                                            |
+| `network/web`     | Conectividad del navegador sobre `navigator.onLine` y eventos `online`/`offline` (`createWebNetworkMonitor`, `subscribeOnline`, `useOnline`).             |
+| `network/expo`    | Conectividad del dispositivo con `expo-network` (`createExpoNetworkMonitor`, `subscribeOnline`, `useOnline`).                                             |
+| `store`           | Contrato asíncrono portable por colección (`CollectionStore`) y `MemoryCollectionStore` para pruebas.                                                     |
+| `store/web`       | `CollectionStore` sobre `IndexedDB` con apertura diferida (`createIndexedDBStore`).                                                                       |
+| `store/expo`      | `CollectionStore` sobre `expo-sqlite` con apertura diferida (`createSqliteStore`).                                                                        |
 
-Las rutas de importación son `@s-g-m/ts-kit/base/<paquete>` y `@s-g-m/ts-kit/<módulo>`. Ningún módulo de Kit depende de las aplicaciones consumidoras ni conoce conceptos de negocio. `archtest` en cada proyecto consumidor verifica estos límites y prohíbe importar los SDK de proveedor fuera de Kit.
+Las rutas de importación son `@s-g-m/ts-kit/base/<paquete>` y `@s-g-m/ts-kit/<módulo>` (o `<módulo>/<plataforma>`). Ningún módulo de Kit depende de las aplicaciones consumidoras ni conoce conceptos de negocio. `archtest` en cada proyecto consumidor verifica estos límites y prohíbe importar los SDK de proveedor fuera de Kit.
 
-Los SDK de proveedor y de plataforma (`react`, `firebase`, `@react-native-firebase/*`, `expo-network`, `expo-sqlite`) son `peerDependencies` opcionales: la aplicación instala solo los que usa y cada módulo vive en su propia ruta, así la web no arrastra React Native. Kit los instala como dependencias de desarrollo solo para compilar y probar.
+Los SDK de proveedor y de plataforma (`react`, `firebase`, `@react-native-firebase/*`, `expo-network`, `expo-sqlite`, `expo-image-picker`, `expo-image-manipulator`) son `peerDependencies` opcionales: la aplicación instala solo los que usa y cada adaptador vive en su propia ruta, así la web no arrastra React Native ni el móvil arrastra APIs de DOM. Kit los instala como dependencias de desarrollo solo para compilar y probar.
 
 ### Consumo desde un checkout local
 
@@ -71,6 +80,8 @@ const client = newClient({
 const items = await client.get<Item[]>("/items", { query: { active: true } });
 await client.post("/items", { name: "New item" });
 ```
+
+Una respuesta no exitosa se lanza como `AppError` con el tipo del status (incluidos `GONE` 410, `PRECONDITION_FAILED` 412, `PRECONDITION_REQUIRED` 428 y `TOO_MANY_REQUESTS` 429). Si el cuerpo es el sobre de error de go-kit (`{ "error": { "code", "message", "details" } }`), el código del servidor pasa a ser el código del `AppError` y `details` conserva solo los detalles internos, así `resolveMessage` resuelve textos por código; con otros cuerpos el código es `CodeHttpClientHttpError`.
 
 ### 4. `telemetry`
 
@@ -139,29 +150,33 @@ const text = resolveMessage(error, {
 
 Busca primero por código de `AppError`, luego por tipo y por último usa `fallback`; un error que no es `AppError` recibe `fallback`.
 
-### `storage`
+### 5. `storage`
 
 ```ts
-import { TypedStorage, LocalStorageAdapter } from "@s-g-m/ts-kit/base/storage";
+import { TypedStorage } from "@s-g-m/ts-kit/storage";
+import { LocalStorageAdapter } from "@s-g-m/ts-kit/storage/web";
+// En móvil: import { sqliteStorageAdapter } from "@s-g-m/ts-kit/storage/expo";
 
 const storage = new TypedStorage({ adapter: new LocalStorageAdapter(), prefix: "app" });
 storage.set("theme", "dark");
 ```
 
-### 5. `auth` y `hooks`
+### 6. `auth` y `hooks`
 
 ```ts
 import { AuthManager } from "@s-g-m/ts-kit/auth";
 import { useDebounce, useAsync, useStorage } from "@s-g-m/ts-kit/hooks";
 ```
 
-### 6. Firebase
+### 7. Firebase
 
 `createFirebaseWebAuth({ projectId, apiKey, authDomain, emulatorUrl })` y `createFirebaseNativeAuth({ emulatorUrl })` devuelven un `AuthGateway` (`onUserChanged`, `signIn("google" | "apple")`, `signOut`, `getIdToken`). El SDK persiste y renueva la sesión. `signIn` rechaza con `AUTH_SIGN_IN_CANCELLED` (ventana cerrada por el usuario, nivel `WARN`), `AUTH_SIGN_IN_UNAVAILABLE` o `AUTH_SIGN_IN_FAILED`, con la causa original en `cause`. En nativo, el login de Google y Apple todavía no está integrado: solo funciona con el emulador de Auth, que acepta tokens de proveedor sin firmar (`emulatorCredential`).
 
-### 7. Expo
+### 8. `network`, `image` y `store`
 
-`useOnline()` devuelve la conectividad (`undefined` hasta la primera lectura); `subscribeOnline(listener)` la notifica fuera de React. `lazyStore(name, open)` abre el archivo `expo-sqlite` y construye el almacén en el primer uso, y reintenta si la apertura falla; los almacenes reciben `SqliteDatabase`, que las pruebas pueden implementar con otro motor. `uuidv7` necesita en React Native un polyfill de `crypto.getRandomValues`, como `react-native-get-random-values`.
+- **`network`:** `useOnline()` devuelve la conectividad (`undefined` hasta la primera lectura) y `subscribeOnline(listener)` la notifica fuera de React, tanto desde `@s-g-m/ts-kit/network/web` como desde `@s-g-m/ts-kit/network/expo`. En código compartido usar `NetworkMonitor` y `MemoryNetworkMonitor` desde `@s-g-m/ts-kit/network`.
+- **`image`:** `prepareImage(file)` (`@s-g-m/ts-kit/image/web`) y `pickImage()` (`@s-g-m/ts-kit/image/expo`) devuelven `PreparedImage` (`@s-g-m/ts-kit/image`) en JPEG con su miniatura.
+- **`store`:** `createIndexedDBStore({ name, collections })` (`@s-g-m/ts-kit/store/web`) y `createSqliteStore({ name })` (`@s-g-m/ts-kit/store/expo`) implementan el mismo contrato asíncrono `CollectionStore` (`get`, `put`, `delete`, `list`, `clear`) con apertura diferida y reintento tras fallo; en pruebas usar `MemoryCollectionStore` (`@s-g-m/ts-kit/store`). `uuidv7` necesita en React Native un polyfill de `crypto.getRandomValues`, como `react-native-get-random-values`.
 
 ## Estilo de pruebas
 

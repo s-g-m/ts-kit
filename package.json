@@ -11,14 +11,23 @@
     "./base/env": "./base/env/env.ts",
     "./base/httpcli": "./base/httpcli/httpcli.ts",
     "./base/ids": "./base/ids/ids.ts",
-    "./base/storage": "./base/storage/storage.ts",
     "./base/telemetry": "./base/telemetry/telemetry.ts",
     "./auth": "./auth/auth.ts",
     "./hooks": "./hooks/hooks.ts",
     "./firebase/web": "./firebase/web.ts",
     "./firebase/native": "./firebase/native.ts",
-    "./expo/network": "./expo/network.ts",
-    "./expo/sqlite": "./expo/sqlite.ts"
+    "./storage": "./storage/storage.ts",
+    "./storage/web": "./storage/web.ts",
+    "./storage/expo": "./storage/expo.ts",
+    "./image": "./image/image.ts",
+    "./image/web": "./image/web.ts",
+    "./image/expo": "./image/expo.ts",
+    "./network": "./network/network.ts",
+    "./network/web": "./network/web.ts",
+    "./network/expo": "./network/expo.ts",
+    "./store": "./store/store.ts",
+    "./store/web": "./store/web.ts",
+    "./store/expo": "./store/expo.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -27,12 +36,14 @@
     "lint": "biome check && tsc --noEmit"
   },
   "peerDependencies": {
-    "react": ">=18.0.0",
-    "firebase": ">=12.0.0",
     "@react-native-firebase/app": ">=26.0.0",
     "@react-native-firebase/auth": ">=26.0.0",
+    "expo-image-manipulator": ">=57.0.0",
+    "expo-image-picker": ">=57.0.0",
     "expo-network": ">=57.0.0",
-    "expo-sqlite": ">=57.0.0"
+    "expo-sqlite": ">=57.0.0",
+    "firebase": ">=12.0.0",
+    "react": ">=18.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -45,6 +56,12 @@
       "optional": true
     },
     "@react-native-firebase/auth": {
+      "optional": true
+    },
+    "expo-image-manipulator": {
+      "optional": true
+    },
+    "expo-image-picker": {
       "optional": true
     },
     "expo-network": {
@@ -61,6 +78,8 @@
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.0.0",
     "expo": "^57.0.33",
+    "expo-image-manipulator": "~57.0.22",
+    "expo-image-picker": "~57.0.21",
     "expo-network": "~57.0.3",
     "expo-sqlite": "~57.0.5",
     "firebase": "^12.19.0",

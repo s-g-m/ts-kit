@@ -2,7 +2,7 @@
 
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { MemoryStorageAdapter, TypedStorage } from "../base/storage/storage.ts";
+import { MemoryStorageAdapter, TypedStorage } from "../storage/storage.ts";
 import { useAsync, useDebounce, useInterval, useStorage } from "./hooks.ts";
 
 describe("hooks", () => {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppError } from "../base/errs/errs.ts";
-import { defaultStorage, type TypedStorage } from "../base/storage/storage.ts";
+import { defaultStorage, type TypedStorage } from "../storage/storage.ts";
 
 /**
  * Delays updating the returned value until delayMs has passed without changes.

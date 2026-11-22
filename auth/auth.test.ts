@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { asAppError, ErrorTypes } from "../base/errs/errs.ts";
 import { HttpClient } from "../base/httpcli/httpcli.ts";
-import { MemoryStorageAdapter } from "../base/storage/storage.ts";
+import { MemoryStorageAdapter } from "../storage/storage.ts";
 import { AuthManager, CodeAuthRefreshFailed, decodeJwt } from "./auth.ts";
 
 describe("auth", () => {

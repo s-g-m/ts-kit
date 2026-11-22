@@ -8,6 +8,10 @@ export type ErrorType =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "GONE"
+  | "PRECONDITION_FAILED"
+  | "PRECONDITION_REQUIRED"
+  | "TOO_MANY_REQUESTS"
   | "TIMEOUT"
   | "SERVICE_UNAVAILABLE"
   | "INTERNAL";
@@ -22,6 +26,10 @@ export const ErrorTypes = {
   Forbidden: "FORBIDDEN" as ErrorType,
   NotFound: "NOT_FOUND" as ErrorType,
   Conflict: "CONFLICT" as ErrorType,
+  Gone: "GONE" as ErrorType,
+  PreconditionFailed: "PRECONDITION_FAILED" as ErrorType,
+  PreconditionRequired: "PRECONDITION_REQUIRED" as ErrorType,
+  TooManyRequests: "TOO_MANY_REQUESTS" as ErrorType,
   Timeout: "TIMEOUT" as ErrorType,
   ServiceUnavailable: "SERVICE_UNAVAILABLE" as ErrorType,
   Internal: "INTERNAL" as ErrorType,

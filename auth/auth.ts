@@ -2,7 +2,7 @@
 
 import { newError } from "../base/errs/errs.ts";
 import { bearerInterceptor, type HttpClient } from "../base/httpcli/httpcli.ts";
-import { type StorageAdapter, TypedStorage } from "../base/storage/storage.ts";
+import { type StorageAdapter, TypedStorage } from "../storage/storage.ts";
 
 export const CodeAuthInvalidToken = "AUTH_INVALID_TOKEN";
 export const CodeAuthRefreshFailed = "AUTH_REFRESH_FAILED";

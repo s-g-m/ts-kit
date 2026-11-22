@@ -1,5 +1,27 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { LocalStorageAdapter, MemoryStorageAdapter, TypedStorage } from "./storage.ts";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryStorageAdapter, TypedStorage } from "./storage.ts";
+import { LocalStorageAdapter } from "./web.ts";
+
+const kvStore = vi.hoisted(() => {
+  const data = new Map<string, string>();
+  return {
+    data,
+    getItemSync: vi.fn((key: string) => data.get(key) ?? null),
+    setItemSync: vi.fn((key: string, value: string) => {
+      data.set(key, value);
+    }),
+    removeItemSync: vi.fn((key: string) => {
+      data.delete(key);
+    }),
+    clearSync: vi.fn(() => {
+      data.clear();
+    }),
+  };
+});
+
+vi.mock("expo-sqlite/kv-store", () => ({ default: kvStore }));
+
+const { sqliteStorageAdapter } = await import("./expo.ts");
 
 const TEST_PREFIX = "app";
 
@@ -10,6 +32,8 @@ describe("storage", () => {
   beforeEach(() => {
     memoryAdapter = new MemoryStorageAdapter();
     storage = new TypedStorage({ adapter: memoryAdapter, prefix: TEST_PREFIX });
+    kvStore.data.clear();
+    vi.clearAllMocks();
   });
 
   it("stores and retrieves primitive values across types", () => {
@@ -53,5 +77,18 @@ describe("storage", () => {
     expect(localAdapter.getItem("k1")).toBe("v1");
     localAdapter.removeItem("k1");
     expect(localAdapter.getItem("k1")).toBeNull();
+  });
+
+  it("delegates operations in sqliteStorageAdapter to expo-sqlite/kv-store", () => {
+    const adapter = sqliteStorageAdapter();
+    adapter.setItem("theme", "dark");
+    expect(adapter.getItem("theme")).toBe("dark");
+
+    adapter.removeItem("theme");
+    expect(adapter.getItem("theme")).toBeNull();
+
+    adapter.setItem("lang", "es");
+    adapter.clear();
+    expect(adapter.getItem("lang")).toBeNull();
   });
 });

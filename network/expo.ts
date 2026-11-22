@@ -1,5 +1,5 @@
 import { addNetworkStateListener, getNetworkStateAsync, type NetworkState } from "expo-network";
-import { useEffect, useState } from "react";
+import { type NetworkMonitor, useOnline as useMonitorOnline } from "./network.ts";
 
 export function isOnline(state: NetworkState): boolean {
   return Boolean(state.isConnected) && state.isInternetReachable !== false;
@@ -16,9 +16,14 @@ export function subscribeOnline(listener: (online: boolean) => void): () => void
   return () => subscription.remove();
 }
 
+const expoNetworkMonitor: NetworkMonitor = { subscribeOnline };
+
+/** Expo NetworkMonitor backed by expo-network. */
+export function createExpoNetworkMonitor(): NetworkMonitor {
+  return expoNetworkMonitor;
+}
+
 /** Device connectivity; undefined until the first reading arrives. */
 export function useOnline(): boolean | undefined {
-  const [online, setOnline] = useState<boolean>();
-  useEffect(() => subscribeOnline(setOnline), []);
-  return online;
+  return useMonitorOnline(expoNetworkMonitor);
 }

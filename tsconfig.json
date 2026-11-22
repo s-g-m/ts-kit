@@ -16,5 +16,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["base", "auth", "hooks", "firebase", "expo"]
+  "include": ["base", "auth", "hooks", "firebase", "storage", "image", "network", "store"]
 }

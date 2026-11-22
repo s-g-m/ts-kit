@@ -10,7 +10,5 @@ export * as httpcli from "./httpcli/httpcli.ts";
 export * from "./ids/ids.ts";
 export * as ids from "./ids/ids.ts";
 
-export * from "./storage/storage.ts";
-export * as storage from "./storage/storage.ts";
 export * from "./telemetry/telemetry.ts";
 export * as telemetry from "./telemetry/telemetry.ts";
