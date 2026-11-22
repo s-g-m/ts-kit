@@ -72,6 +72,8 @@ const items = await client.get<Item[]>("/items", { query: { active: true } });
 await client.post("/items", { name: "New item" });
 ```
 
+Una respuesta no exitosa se lanza como `AppError` con el tipo del status (incluidos `GONE` 410, `PRECONDITION_FAILED` 412, `PRECONDITION_REQUIRED` 428 y `TOO_MANY_REQUESTS` 429). Si el cuerpo es el sobre de error de go-kit (`{ "error": { "code", "message", "details" } }`), el código del servidor pasa a ser el código del `AppError` y `details` conserva solo los detalles internos, así `resolveMessage` resuelve textos por código; con otros cuerpos el código es `CodeHttpClientHttpError`.
+
 ### 4. `telemetry`
 
 Inicializar una vez al arrancar la aplicación. No requiere instrumentar pantallas ni repetir llamadas de telemetría alrededor de `httpcli`.

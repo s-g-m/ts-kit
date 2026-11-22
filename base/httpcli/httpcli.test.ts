@@ -135,6 +135,43 @@ describe("httpcli", () => {
     }
   });
 
+  it("reads the go-kit error envelope code, message and details", async () => {
+    const tests = [
+      { status: 410, wantType: ErrorTypes.Gone },
+      { status: 412, wantType: ErrorTypes.PreconditionFailed },
+      { status: 428, wantType: ErrorTypes.PreconditionRequired },
+      { status: 429, wantType: ErrorTypes.TooManyRequests },
+    ];
+
+    for (const tt of tests) {
+      const body = {
+        error: {
+          type: "GONE",
+          code: "INVITATION_INVALID",
+          message: "not valid",
+          details: { items: [1] },
+        },
+      };
+      const client = newClient({
+        baseUrl: TEST_BASE_URL,
+        fetchFn: createMockFetch({ ok: false, status: tt.status, body }),
+      });
+
+      const failure = asAppError(await client.get("/resource").catch((err: unknown) => err));
+      expect(failure?.code).toBe("INVITATION_INVALID");
+      expect(failure?.type).toBe(tt.wantType);
+      expect(failure?.message).toBe("not valid");
+      expect(failure?.details).toEqual({ items: [1] });
+    }
+
+    const malformed = newClient({
+      baseUrl: TEST_BASE_URL,
+      fetchFn: createMockFetch({ ok: false, status: 409, body: { error: { message: "no code" } } }),
+    });
+    const fallback = asAppError(await malformed.get("/resource").catch((err: unknown) => err));
+    expect(fallback?.code).toBe(CodeHttpClientHttpError);
+  });
+
   it("applies request and response interceptors in order", async () => {
     const mockFetch = createMockFetch({
       status: 200,
